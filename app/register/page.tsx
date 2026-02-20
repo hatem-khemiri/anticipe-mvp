@@ -43,8 +43,14 @@ export default function RegisterPage() {
     }
 
     try {
+      // Utiliser l'API Nominatim avec User-Agent
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`,
+        {
+          headers: {
+            'User-Agent': 'Anticipe/1.0 (production-forecasting-app)',
+          },
+        }
       );
       const data = await response.json();
 
@@ -55,10 +61,11 @@ export default function RegisterPage() {
         });
         setError('');
       } else {
-        setError('Impossible de trouver cette adresse');
+        setError('Impossible de trouver cette adresse. Vérifiez l\'orthographe.');
       }
-    } catch (err) {
-      setError('Erreur lors de la géolocalisation');
+    } catch (err: any) {
+      console.error('Erreur géolocalisation:', err);
+      setError(`Erreur lors de la géolocalisation : ${err.message || 'Service indisponible'}`);
     } finally {
       setGeoLoading(false);
     }
