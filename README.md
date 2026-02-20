@@ -1,10 +1,10 @@
-# Bakery Forecast MVP
+# Anticipe MVP
 
-Application de prévision de production pour boulangeries et commerces alimentaires.
+Application de prévision de production pour commerces alimentaires.
 
 ## 📋 Description
 
-Bakery Forecast aide les directeurs de boutique à anticiper leurs besoins de production quotidiens en combinant :
+Anticipe aide les directeurs de boutique à anticiper leurs besoins de production quotidiens en combinant :
 - Données historiques de ventes (J-7, J-14, J-365)
 - Prévisions météorologiques automatiques
 - Calendriers culturels et événements exceptionnels

@@ -6,8 +6,8 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Bakery Forecast - Anticipation de production',
-  description: 'Application de prévision de production pour boulangeries',
+  title: 'Anticipe - Prévision de production alimentaire',
+  description: 'Application de prévision de production pour commerces alimentaires',
 };
 
 export default function RootLayout({

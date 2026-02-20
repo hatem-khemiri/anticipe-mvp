@@ -30,7 +30,7 @@ export function Navigation({ user }: NavigationProps) {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/dashboard" className="text-xl font-bold text-primary-600">
-                🥖 Bakery Forecast
+                📊 Anticipe
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-4">

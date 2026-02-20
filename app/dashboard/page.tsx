@@ -206,7 +206,7 @@ export default async function DashboardPage() {
               </h3>
               <div className="mt-2 text-sm text-blue-700">
                 <p>
-                  Pour utiliser l'application, vous devez d'abord{' '}
+                  Pour utiliser Anticipe, vous devez d'abord{' '}
                   <Link
                     href="/dashboard/products"
                     className="font-medium underline"

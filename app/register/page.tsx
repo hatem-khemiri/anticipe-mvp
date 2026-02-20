@@ -11,6 +11,7 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     shopName: '',
+    businessType: '',
     address: '',
   });
   const [location, setLocation] = useState<{
@@ -24,7 +25,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -42,7 +43,6 @@ export default function RegisterPage() {
     }
 
     try {
-      // Utiliser l'API Nominatim (OpenStreetMap) pour géocoder l'adresse
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`
       );
@@ -70,6 +70,11 @@ export default function RegisterPage() {
 
     if (formData.password !== formData.confirmPassword) {
       setError('Les mots de passe ne correspondent pas');
+      return;
+    }
+
+    if (!formData.businessType) {
+      setError('Veuillez sélectionner un type de commerce');
       return;
     }
 
@@ -139,7 +144,7 @@ export default function RegisterPage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="shopName" className="label">
-                Nom de la boutique *
+                Nom du commerce *
               </label>
               <input
                 id="shopName"
@@ -147,11 +152,33 @@ export default function RegisterPage() {
                 type="text"
                 required
                 className="input"
-                placeholder="Ma Boulangerie"
+                placeholder="Ma Boutique"
                 value={formData.shopName}
                 onChange={handleChange}
                 disabled={loading}
               />
+            </div>
+
+            <div>
+              <label htmlFor="businessType" className="label">
+                Type de commerce *
+              </label>
+              <select
+                id="businessType"
+                name="businessType"
+                required
+                className="input"
+                value={formData.businessType}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                <option value="">Sélectionnez...</option>
+                <option value="boulangerie">Boulangerie / Pâtisserie</option>
+                <option value="restaurant">Restaurant / Traiteur</option>
+                <option value="snack">Snack / Sandwicherie</option>
+                <option value="cookies">Cookies / Confiserie</option>
+                <option value="autre">Autre production alimentaire</option>
+              </select>
             </div>
 
             <div>
@@ -218,7 +245,7 @@ export default function RegisterPage() {
                 type="text"
                 required
                 className="input"
-                placeholder="12 rue de la Boulangerie, 75001 Paris"
+                placeholder="12 rue de la République, 75001 Paris"
                 value={formData.address}
                 onChange={handleChange}
                 disabled={loading}
