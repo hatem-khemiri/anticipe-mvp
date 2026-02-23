@@ -27,12 +27,21 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [addressChanged, setAddressChanged] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+
+    // Si l'adresse change, invalider la géolocalisation
+    if (name === 'streetAddress' || name === 'postalCode' || name === 'city') {
+      setLocation({ latitude: null, longitude: null });
+      setAddressChanged(true);
+    }
   };
 
   const getFullAddress = () => {
@@ -100,6 +109,7 @@ export default function RegisterPage() {
           latitude: coords[1],  // Latitude
           longitude: coords[0], // Longitude
         });
+        setAddressChanged(false);
         setError('');
         console.log('✅ Géolocalisation réussie:', coords[1], coords[0], 'Type:', props.type, 'Score:', score);
       } else {
@@ -129,7 +139,12 @@ export default function RegisterPage() {
     }
 
     if (!location.latitude || !location.longitude) {
-      setError('Veuillez géolocaliser votre adresse');
+      setError('⚠️ Vous devez géolocaliser votre adresse avant de créer votre compte. Cliquez sur "📍 Géolocaliser cette adresse".');
+      return;
+    }
+
+    if (addressChanged) {
+      setError('⚠️ L\'adresse a été modifiée. Veuillez la géolocaliser à nouveau.');
       return;
     }
 
@@ -183,13 +198,21 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {location.latitude && location.longitude && (
+          {location.latitude && location.longitude && !addressChanged && (
             <div className="rounded-md bg-green-50 p-4">
               <p className="text-sm text-green-800">
                 ✓ Adresse géolocalisée avec succès
               </p>
               <p className="text-xs text-green-600 mt-1">
                 Coordonnées : {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+              </p>
+            </div>
+          )}
+
+          {addressChanged && (
+            <div className="rounded-md bg-orange-50 p-4">
+              <p className="text-sm text-orange-800">
+                ⚠️ Adresse modifiée. Cliquez sur "Géolocaliser cette adresse" pour valider les changements.
               </p>
             </div>
           )}
@@ -382,7 +405,7 @@ export default function RegisterPage() {
           <div>
             <button
               type="submit"
-              disabled={loading || !location.latitude}
+              disabled={loading || !location.latitude || addressChanged}
               className="btn btn-primary w-full"
             >
               {loading ? <span className="spinner"></span> : 'Créer mon compte'}
