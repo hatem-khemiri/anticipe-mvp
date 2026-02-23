@@ -49,31 +49,46 @@ export default function RegisterPage() {
       return;
     }
 
-    const fullAddress = getFullAddress();
-
     try {
-      console.log('Géolocalisation de:', fullAddress);
+      console.log('Géolocalisation via API Adresse (gouvernement français)');
       
+      // Utiliser l'API Adresse officielle française (gratuite, sans limite, très précise)
+      const query = `${formData.streetAddress} ${formData.postalCode} ${formData.city}`;
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`,
-        {
-          headers: {
-            'User-Agent': 'Anticipe/1.0 (production-forecasting-app)',
-          },
-        }
+        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=1`
       );
       
       console.log('Status:', response.status);
       const data = await response.json();
       console.log('Réponse:', data);
 
-      if (data && data.length > 0) {
+      if (data.features && data.features.length > 0) {
+        const result = data.features[0];
+        const coords = result.geometry.coordinates; // [longitude, latitude]
+        
+        // Vérifier que le code postal correspond exactement
+        const foundPostalCode = result.properties.postcode;
+        if (foundPostalCode !== formData.postalCode) {
+          setError(`⚠️ Code postal incorrect. L'adresse trouvée correspond au code postal ${foundPostalCode}. Vérifiez votre saisie.`);
+          setGeoLoading(false);
+          return;
+        }
+
+        // Vérifier le score de confiance (0 à 1)
+        const score = result.properties.score;
+        if (score < 0.5) {
+          setError('❌ Adresse trop imprécise. Vérifiez l\'orthographe de la rue et de la ville.');
+          console.log('❌ Score trop faible:', score);
+          setGeoLoading(false);
+          return;
+        }
+
         setLocation({
-          latitude: parseFloat(data[0].lat),
-          longitude: parseFloat(data[0].lon),
+          latitude: coords[1],  // Latitude
+          longitude: coords[0], // Longitude
         });
         setError('');
-        console.log('✅ Géolocalisation réussie:', data[0].lat, data[0].lon);
+        console.log('✅ Géolocalisation réussie:', coords[1], coords[0], 'Score:', score);
       } else {
         setError('❌ Adresse introuvable. Vérifiez l\'orthographe de la rue, du code postal et de la ville.');
         console.log('❌ Aucun résultat trouvé');
