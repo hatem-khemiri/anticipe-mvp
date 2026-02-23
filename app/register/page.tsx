@@ -12,7 +12,10 @@ export default function RegisterPage() {
     confirmPassword: '',
     shopName: '',
     businessType: '',
-    address: '',
+    streetAddress: '',
+    postalCode: '',
+    city: '',
+    country: 'France',
   });
   const [location, setLocation] = useState<{
     latitude: number | null;
@@ -32,27 +35,37 @@ export default function RegisterPage() {
     });
   };
 
+  const getFullAddress = () => {
+    return `${formData.streetAddress}, ${formData.postalCode} ${formData.city}, ${formData.country}`;
+  };
+
   const getLocation = async () => {
     setGeoLoading(true);
     setError('');
 
-    if (!formData.address) {
-      setError('Veuillez entrer une adresse d\'abord');
+    if (!formData.streetAddress || !formData.postalCode || !formData.city) {
+      setError('Veuillez remplir l\'adresse complète (rue, code postal, ville)');
       setGeoLoading(false);
       return;
     }
 
+    const fullAddress = getFullAddress();
+
     try {
-      // Utiliser l'API Nominatim avec User-Agent
+      console.log('Géolocalisation de:', fullAddress);
+      
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(formData.address)}`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`,
         {
           headers: {
             'User-Agent': 'Anticipe/1.0 (production-forecasting-app)',
           },
         }
       );
+      
+      console.log('Status:', response.status);
       const data = await response.json();
+      console.log('Réponse:', data);
 
       if (data && data.length > 0) {
         setLocation({
@@ -60,12 +73,14 @@ export default function RegisterPage() {
           longitude: parseFloat(data[0].lon),
         });
         setError('');
+        console.log('✅ Géolocalisation réussie:', data[0].lat, data[0].lon);
       } else {
-        setError('Impossible de trouver cette adresse. Vérifiez l\'orthographe.');
+        setError('❌ Adresse introuvable. Vérifiez l\'orthographe de la rue, du code postal et de la ville.');
+        console.log('❌ Aucun résultat trouvé');
       }
     } catch (err: any) {
-      console.error('Erreur géolocalisation:', err);
-      setError(`Erreur lors de la géolocalisation : ${err.message || 'Service indisponible'}`);
+      console.error('❌ Erreur géolocalisation:', err);
+      setError(`Erreur : ${err.message || 'Service de géolocalisation indisponible. Réessayez dans quelques secondes.'}`);
     } finally {
       setGeoLoading(false);
     }
@@ -102,7 +117,7 @@ export default function RegisterPage() {
           email: formData.email,
           password: formData.password,
           shopName: formData.shopName,
-          address: formData.address,
+          address: getFullAddress(),
           latitude: location.latitude,
           longitude: location.longitude,
         }),
@@ -144,6 +159,9 @@ export default function RegisterPage() {
             <div className="rounded-md bg-green-50 p-4">
               <p className="text-sm text-green-800">
                 ✓ Adresse géolocalisée avec succès
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                Coordonnées : {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
               </p>
             </div>
           )}
@@ -242,33 +260,94 @@ export default function RegisterPage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="address" className="label">
+            <div className="border-t border-gray-200 pt-4">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">
                 Adresse complète * (nécessaire pour la météo)
-              </label>
-              <input
-                id="address"
-                name="address"
-                type="text"
-                required
-                className="input"
-                placeholder="12 rue de la République, 75001 Paris"
-                value={formData.address}
-                onChange={handleChange}
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={getLocation}
-                disabled={geoLoading || !formData.address}
-                className="mt-2 btn btn-secondary w-full"
-              >
-                {geoLoading ? (
-                  <span className="spinner"></span>
-                ) : (
-                  '📍 Géolocaliser cette adresse'
-                )}
-              </button>
+              </h3>
+
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="streetAddress" className="label">
+                    Numéro et rue
+                  </label>
+                  <input
+                    id="streetAddress"
+                    name="streetAddress"
+                    type="text"
+                    required
+                    className="input"
+                    placeholder="12 rue de la République"
+                    value={formData.streetAddress}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="postalCode" className="label">
+                      Code postal
+                    </label>
+                    <input
+                      id="postalCode"
+                      name="postalCode"
+                      type="text"
+                      required
+                      className="input"
+                      placeholder="75001"
+                      value={formData.postalCode}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="city" className="label">
+                      Ville
+                    </label>
+                    <input
+                      id="city"
+                      name="city"
+                      type="text"
+                      required
+                      className="input"
+                      placeholder="Paris"
+                      value={formData.city}
+                      onChange={handleChange}
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="country" className="label">
+                    Pays
+                  </label>
+                  <input
+                    id="country"
+                    name="country"
+                    type="text"
+                    required
+                    className="input"
+                    value={formData.country}
+                    onChange={handleChange}
+                    disabled={loading}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={getLocation}
+                  disabled={geoLoading || !formData.streetAddress || !formData.postalCode || !formData.city}
+                  className="btn btn-secondary w-full"
+                >
+                  {geoLoading ? (
+                    <span className="spinner"></span>
+                  ) : (
+                    '📍 Géolocaliser cette adresse'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
