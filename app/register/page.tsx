@@ -60,25 +60,38 @@ export default function RegisterPage() {
       
       console.log('Status:', response.status);
       const data = await response.json();
-      console.log('Réponse:', data);
+      console.log('Réponse complète:', data);
 
       if (data.features && data.features.length > 0) {
         const result = data.features[0];
         const coords = result.geometry.coordinates; // [longitude, latitude]
+        const props = result.properties;
         
-        // Vérifier que le code postal correspond exactement
-        const foundPostalCode = result.properties.postcode;
+        console.log('Type:', props.type);
+        console.log('Score:', props.score);
+        
+        // VÉRIFICATION 1 : Type doit être "housenumber" ou "street" (pas "municipality" ou "locality")
+        const validTypes = ['housenumber', 'street'];
+        if (!validTypes.includes(props.type)) {
+          setError(`❌ Adresse trop imprécise. Type trouvé : "${props.type}". Veuillez saisir un numéro de rue précis (ex: "12 rue de Rivoli" et non juste "Paris").`);
+          console.log('❌ Type invalide:', props.type);
+          setGeoLoading(false);
+          return;
+        }
+        
+        // VÉRIFICATION 2 : Le code postal doit correspondre exactement
+        const foundPostalCode = props.postcode;
         if (foundPostalCode !== formData.postalCode) {
           setError(`⚠️ Code postal incorrect. L'adresse trouvée correspond au code postal ${foundPostalCode}. Vérifiez votre saisie.`);
           setGeoLoading(false);
           return;
         }
 
-        // Vérifier le score de confiance (0 à 1)
-        const score = result.properties.score;
-        if (score < 0.5) {
-          setError('❌ Adresse trop imprécise. Vérifiez l\'orthographe de la rue et de la ville.');
-          console.log('❌ Score trop faible:', score);
+        // VÉRIFICATION 3 : Score minimum de 0.6 (accepte les abréviations mais rejette les adresses floues)
+        const score = props.score;
+        if (score < 0.6) {
+          setError(`❌ Adresse introuvable ou trop imprécise (score: ${(score * 100).toFixed(0)}%). Vérifiez l'orthographe de la rue.`);
+          console.log('❌ Score insuffisant:', score);
           setGeoLoading(false);
           return;
         }
@@ -88,7 +101,7 @@ export default function RegisterPage() {
           longitude: coords[0], // Longitude
         });
         setError('');
-        console.log('✅ Géolocalisation réussie:', coords[1], coords[0], 'Score:', score);
+        console.log('✅ Géolocalisation réussie:', coords[1], coords[0], 'Type:', props.type, 'Score:', score);
       } else {
         setError('❌ Adresse introuvable. Vérifiez l\'orthographe de la rue, du code postal et de la ville.');
         console.log('❌ Aucun résultat trouvé');
