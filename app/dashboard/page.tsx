@@ -1,6 +1,6 @@
 'use client';
 
-import { DeleteAccountButton } from '../delete-account-button';
+import { DeleteAccountButton } from './delete-account-button';
 
 export default function SettingsPage() {
   return (
