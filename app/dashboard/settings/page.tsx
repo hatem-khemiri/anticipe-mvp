@@ -51,7 +51,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchUserData();
-    fetchCalendars();
+    // fetchCalendars(); Désactivé temporairement
   }, []);
 
   const fetchUserData = async () => {
@@ -257,6 +257,7 @@ export default function SettingsPage() {
   };
 
   const toggleCalendar = async (calendarName: string) => {
+    return ; //Désactivé temporairement
     const calendar = calendars.find(c => c.calendar_name === calendarName);
     const newStatus = !calendar?.is_active;
 
