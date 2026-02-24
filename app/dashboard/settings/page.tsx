@@ -374,7 +374,7 @@ export default function SettingsPage() {
               ✓ Adresse géolocalisée
             </p>
             <p className="text-xs text-green-600 mt-1">
-              Coordonnées : {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+              Coordonnées : {location.latitude?.toFixed(4) || 'N/A'}, {location.longitude?.toFixed(4) || 'N/A'}
             </p>
           </div>
         )}
