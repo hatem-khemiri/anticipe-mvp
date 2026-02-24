@@ -98,6 +98,8 @@ export default function RegisterPage() {
 
         // VÉRIFICATION 3 : Score minimum de 0.6 (accepte les abréviations mais rejette les adresses floues)
         const score = props.score;
+        console.log('Score de confiance:', score);
+        
         if (score < 0.6) {
           setError(`❌ Adresse introuvable ou trop imprécise (score: ${(score * 100).toFixed(0)}%). Vérifiez l'orthographe de la rue.`);
           console.log('❌ Score insuffisant:', score);
@@ -204,7 +206,7 @@ export default function RegisterPage() {
                 ✓ Adresse géolocalisée avec succès
               </p>
               <p className="text-xs text-green-600 mt-1">
-                Coordonnées : {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
+                Coordonnées : {location.latitude?.toFixed(4) || 'N/A'}, {location.longitude?.toFixed(4) || 'N/A'}
               </p>
             </div>
           )}
