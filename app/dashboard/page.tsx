@@ -4,6 +4,7 @@ import { query, DailySale, Product } from '@/lib/db';
 import { format, subDays, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import Link from 'next/link';
+import { DeleteAccountButton } from './delete-account-button';
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -220,6 +221,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Bouton de suppression */}
+      <DeleteAccountButton />
     </div>
   );
 }
