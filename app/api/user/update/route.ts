@@ -16,7 +16,6 @@ export async function PUT(request: Request) {
     const body = await request.json();
     const { 
       shopName, 
-      businessType, 
       streetAddress, 
       postalCode, 
       city, 
@@ -27,9 +26,7 @@ export async function PUT(request: Request) {
       newPassword
     } = body;
 
-    // Si changement de mot de passe
     if (currentPassword && newPassword) {
-      // Vérifier l'ancien mot de passe
       const userResult = await query(
         'SELECT password FROM users WHERE id = $1',
         [userId]
@@ -48,7 +45,6 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: 'Mot de passe actuel incorrect' }, { status: 400 });
       }
 
-      // Hasher le nouveau mot de passe
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
       await query(
@@ -59,7 +55,6 @@ export async function PUT(request: Request) {
       return NextResponse.json({ message: 'Mot de passe modifié avec succès' });
     }
 
-    // Mise à jour des informations générales
     const fullAddress = `${streetAddress}, ${postalCode} ${city}, ${country}`;
 
     await query(

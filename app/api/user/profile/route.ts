@@ -30,9 +30,9 @@ export async function GET(request: Request) {
       user: {
         shopName: user.shop_name,
         email: user.email,
-        address: user.address,
-        latitude: user.latitude,
-        longitude: user.longitude,
+        address: user.address || '',
+        latitude: user.latitude || null,
+        longitude: user.longitude || null,
       },
     });
   } catch (error) {
