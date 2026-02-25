@@ -80,14 +80,35 @@ export default function SettingsPage() {
       const data = await response.json();
       
       if (response.ok) {
+        const defaultCalendars = [
+          { calendar_name: 'catholic', is_active: true },
+          { calendar_name: 'muslim', is_active: true },
+          { calendar_name: 'jewish', is_active: true },
+          { calendar_name: 'hindu', is_active: false },
+          { calendar_name: 'chinese', is_active: false },
+          { calendar_name: 'commercial', is_active: true },
+        ];
+
         if (data.calendars.length === 0) {
-          setCalendars([
-            { calendar_name: 'catholic', is_active: true },
-            { calendar_name: 'muslim', is_active: true },
-            { calendar_name: 'commercial', is_active: true },
-          ]);
+          setCalendars(defaultCalendars);
+          // Initialiser dans la DB
+          for (const cal of defaultCalendars) {
+            await fetch('/api/user/calendars', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                calendarName: cal.calendar_name,
+                isActive: cal.is_active,
+              }),
+            });
+          }
         } else {
-          setCalendars(data.calendars);
+          // Fusionner avec les valeurs par défaut pour les calendriers manquants
+          const mergedCalendars = defaultCalendars.map(defaultCal => {
+            const existingCal = data.calendars.find((c: Calendar) => c.calendar_name === defaultCal.calendar_name);
+            return existingCal || defaultCal;
+          });
+          setCalendars(mergedCalendars);
         }
       }
     } catch (error) {
@@ -285,7 +306,7 @@ export default function SettingsPage() {
         setCalendars(calendars.map(c =>
           c.calendar_name === calendarName ? { ...c, is_active: newStatus } : c
         ));
-        setSuccess(`Calendrier ${calendarName} ${newStatus ? 'activé' : 'désactivé'}`);
+        setSuccess(`✅ Calendrier ${calendarName} ${newStatus ? 'activé' : 'désactivé'}`);
       }
     } catch (error) {
       setError('Erreur lors de la mise à jour du calendrier');
@@ -502,11 +523,14 @@ export default function SettingsPage() {
         <div className="space-y-3">
           {[
             { name: 'catholic', label: 'Calendrier catholique', description: 'Noël, Pâques, Toussaint...' },
-            { name: 'muslim', label: 'Calendrier musulman', description: 'Ramadan, Aïd...' },
-            { name: 'commercial', label: 'Événements commerciaux', description: 'Saint-Valentin, Fête des mères...' },
+            { name: 'muslim', label: 'Calendrier musulman', description: 'Ramadan, Aïd al-Fitr, Aïd al-Adha...' },
+            { name: 'jewish', label: 'Calendrier judaïque', description: 'Hanoukka, Yom Kippour, Pessah...' },
+            { name: 'hindu', label: 'Calendrier hindou', description: 'Diwali, Holi, Navaratri...' },
+            { name: 'chinese', label: 'Calendrier chinois', description: 'Nouvel An chinois, Fête de la Mi-Automne...' },
+            { name: 'commercial', label: 'Événements commerciaux', description: 'Saint-Valentin, Fête des mères, Black Friday...' },
           ].map((cal) => {
             const calendar = calendars.find(c => c.calendar_name === cal.name);
-            const isActive = calendar?.is_active ?? true;
+            const isActive = calendar?.is_active ?? false;
 
             return (
               <div key={cal.name} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -529,6 +553,12 @@ export default function SettingsPage() {
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-800">
+            💡 <strong>Calendrier d'événements locaux (culturels/sportifs) :</strong> Cette fonctionnalité sera ajoutée prochainement. Elle utilisera votre géolocalisation pour adapter les recommandations aux événements de votre région.
+          </p>
         </div>
       </div>
 
