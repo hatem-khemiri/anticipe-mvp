@@ -36,6 +36,19 @@ export async function PUT(request: Request) {
       return NextResponse.json({ message: 'Mot de passe modifié avec succès' });
     }
 
+    // Modification de l'adresse
+    if (body.streetAddress && body.postalCode && body.city && body.latitude && body.longitude) {
+      const { streetAddress, postalCode, city, country, latitude, longitude } = body;
+      const fullAddress = `${streetAddress}, ${postalCode} ${city}, ${country}`;
+      
+      await query(
+        'UPDATE users SET address = $1, latitude = $2, longitude = $3 WHERE id = $4',
+        [fullAddress, latitude, longitude, userId]
+      );
+
+      return NextResponse.json({ message: 'Adresse mise à jour' });
+    }
+
     // Modification du nom
     if (shopName) {
       await query('UPDATE users SET shop_name = $1 WHERE id = $2', [shopName, userId]);

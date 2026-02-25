@@ -14,7 +14,7 @@ export async function GET() {
     const userId = parseInt(session.user.id);
 
     const result = await query(
-      'SELECT shop_name, email, address FROM users WHERE id = $1',
+      'SELECT shop_name, email, address, latitude, longitude FROM users WHERE id = $1',
       [userId]
     );
 
@@ -28,6 +28,8 @@ export async function GET() {
       shopName: user.shop_name,
       email: user.email,
       address: user.address || '',
+      latitude: user.latitude,
+      longitude: user.longitude,
     });
   } catch (error) {
     console.error('Erreur GET /api/user/profile:', error);
