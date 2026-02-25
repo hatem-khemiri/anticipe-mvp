@@ -20,7 +20,7 @@ export async function PUT(request: Request) {
     }
 
     await query(
-      'UPDATE users SET shop_name = $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE users SET shop_name = $1 WHERE id = $2',
       [shopName, userId]
     );
 
