@@ -18,20 +18,20 @@ export async function PUT(request: Request) {
 
     // Changement de mot de passe
     if (currentPassword && newPassword) {
-      const userResult = await query('SELECT password FROM users WHERE id = $1', [userId]);
+      const userResult = await query('SELECT password_hash FROM users WHERE id = $1', [userId]);
 
       if (userResult.rows.length === 0) {
         return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404 });
       }
 
-      const isValidPassword = await bcrypt.compare(currentPassword, userResult.rows[0].password);
+      const isValidPassword = await bcrypt.compare(currentPassword, userResult.rows[0].password_hash);
 
       if (!isValidPassword) {
         return NextResponse.json({ error: 'Mot de passe actuel incorrect' }, { status: 400 });
       }
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, userId]);
+      await query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, userId]);
 
       return NextResponse.json({ message: 'Mot de passe modifié avec succès' });
     }
