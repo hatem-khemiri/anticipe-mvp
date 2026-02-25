@@ -3,11 +3,29 @@
 import { useState, useEffect } from 'react';
 import { DeleteAccountButton } from '../delete-account-button';
 
+interface Calendar {
+  calendar_name: string;
+  is_active: boolean;
+}
+
 export default function SettingsPage() {
   const [userData, setUserData] = useState<any>(null);
+  const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [shopName, setShopName] = useState('');
+  
+  // Adresse
+  const [streetAddress, setStreetAddress] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('France');
+  const [location, setLocation] = useState<{ latitude: number | null; longitude: number | null }>({
+    latitude: null,
+    longitude: null,
+  });
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [addressChanged, setAddressChanged] = useState(false);
   
   // Mot de passe
   const [currentPassword, setCurrentPassword] = useState('');
@@ -20,6 +38,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchUserData();
+    fetchCalendars();
   }, []);
 
   const fetchUserData = async () => {
@@ -30,11 +49,108 @@ export default function SettingsPage() {
       if (response.ok) {
         setUserData(data);
         setShopName(data.shopName);
+        
+        // Parser l'adresse
+        if (data.address) {
+          const addressParts = data.address.split(',');
+          if (addressParts.length >= 3) {
+            setStreetAddress(addressParts[0].trim());
+            const postalCity = addressParts[1].trim().split(' ');
+            setPostalCode(postalCity[0]);
+            setCity(postalCity.slice(1).join(' '));
+            setCountry(addressParts[2].trim());
+          }
+        }
+        
+        setLocation({
+          latitude: data.latitude,
+          longitude: data.longitude,
+        });
       }
     } catch (error) {
       console.error('Erreur:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCalendars = async () => {
+    try {
+      const response = await fetch('/api/user/calendars');
+      const data = await response.json();
+      
+      if (response.ok) {
+        if (data.calendars.length === 0) {
+          setCalendars([
+            { calendar_name: 'catholic', is_active: true },
+            { calendar_name: 'muslim', is_active: true },
+            { calendar_name: 'commercial', is_active: true },
+          ]);
+        } else {
+          setCalendars(data.calendars);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+    }
+  };
+
+  const getLocation = async () => {
+    setGeoLoading(true);
+    setError('');
+
+    if (!streetAddress || !postalCode || !city) {
+      setError('Veuillez remplir l\'adresse complète');
+      setGeoLoading(false);
+      return;
+    }
+
+    try {
+      const query = `${streetAddress} ${postalCode} ${city}`;
+      const response = await fetch(
+        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=1`
+      );
+      
+      const data = await response.json();
+
+      if (data.features && data.features.length > 0) {
+        const result = data.features[0];
+        const coords = result.geometry.coordinates;
+        const props = result.properties;
+        
+        const validTypes = ['housenumber', 'street'];
+        if (!validTypes.includes(props.type)) {
+          setError('Adresse trop imprécise. Veuillez saisir un numéro de rue.');
+          setGeoLoading(false);
+          return;
+        }
+        
+        if (props.postcode !== postalCode) {
+          setError(`Code postal incorrect. L'adresse correspond au code postal ${props.postcode}.`);
+          setGeoLoading(false);
+          return;
+        }
+
+        if (props.score < 0.6) {
+          setError('Adresse introuvable. Vérifiez l\'orthographe.');
+          setGeoLoading(false);
+          return;
+        }
+
+        setLocation({
+          latitude: coords[1],
+          longitude: coords[0],
+        });
+        setAddressChanged(false);
+        setSuccess('Adresse géolocalisée avec succès');
+        setError('');
+      } else {
+        setError('Adresse introuvable');
+      }
+    } catch (err: any) {
+      setError(`Erreur : ${err.message}`);
+    } finally {
+      setGeoLoading(false);
     }
   };
 
@@ -57,6 +173,51 @@ export default function SettingsPage() {
         setUserData({ ...userData, shopName });
       } else {
         setError(data.error || 'Erreur lors de la mise à jour');
+      }
+    } catch (error) {
+      setError('Erreur lors de la mise à jour');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveAddress = async () => {
+    setError('');
+    setSuccess('');
+
+    if (!location.latitude || !location.longitude) {
+      setError('Veuillez géolocaliser l\'adresse');
+      return;
+    }
+
+    if (addressChanged) {
+      setError('Adresse modifiée. Veuillez la géolocaliser à nouveau.');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const response = await fetch('/api/user/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          streetAddress,
+          postalCode,
+          city,
+          country,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('✅ Adresse mise à jour avec succès');
+        fetchUserData();
+      } else {
+        setError(data.error);
       }
     } catch (error) {
       setError('Erreur lors de la mise à jour');
@@ -103,6 +264,31 @@ export default function SettingsPage() {
       setError('Erreur lors de la modification');
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const toggleCalendar = async (calendarName: string) => {
+    const calendar = calendars.find(c => c.calendar_name === calendarName);
+    const newStatus = !calendar?.is_active;
+
+    try {
+      const response = await fetch('/api/user/calendars', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          calendarName,
+          isActive: newStatus,
+        }),
+      });
+
+      if (response.ok) {
+        setCalendars(calendars.map(c =>
+          c.calendar_name === calendarName ? { ...c, is_active: newStatus } : c
+        ));
+        setSuccess(`Calendrier ${calendarName} ${newStatus ? 'activé' : 'désactivé'}`);
+      }
+    } catch (error) {
+      setError('Erreur lors de la mise à jour du calendrier');
     }
   };
 
@@ -156,18 +342,102 @@ export default function SettingsPage() {
             <p className="text-xs text-gray-500 mt-1">L'email ne peut pas être modifié</p>
           </div>
 
-          <div>
-            <label className="label">Adresse</label>
-            <p className="text-gray-900">{userData?.address}</p>
-            <p className="text-xs text-gray-500 mt-1">La modification de l'adresse sera disponible prochainement</p>
-          </div>
-
           <button
             onClick={handleSaveName}
             disabled={saving}
             className="btn btn-primary"
           >
-            {saving ? <span className="spinner"></span> : 'Enregistrer les modifications'}
+            {saving ? <span className="spinner"></span> : 'Enregistrer le nom'}
+          </button>
+        </div>
+      </div>
+
+      {/* Localisation */}
+      <div className="card mb-6">
+        <h2 className="text-xl font-semibold mb-4">Localisation</h2>
+        
+        {location.latitude && location.longitude && !addressChanged && (
+          <div className="rounded-md bg-green-50 p-4 mb-4">
+            <p className="text-sm text-green-800">
+              ✓ Adresse géolocalisée
+            </p>
+          </div>
+        )}
+
+        {addressChanged && (
+          <div className="rounded-md bg-orange-50 p-4 mb-4">
+            <p className="text-sm text-orange-800">
+              ⚠️ Adresse modifiée. Cliquez sur "Géolocaliser" pour valider.
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label className="label">Numéro et rue</label>
+            <input
+              type="text"
+              className="input"
+              value={streetAddress}
+              onChange={(e) => {
+                setStreetAddress(e.target.value);
+                setAddressChanged(true);
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Code postal</label>
+              <input
+                type="text"
+                className="input"
+                value={postalCode}
+                onChange={(e) => {
+                  setPostalCode(e.target.value);
+                  setAddressChanged(true);
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="label">Ville</label>
+              <input
+                type="text"
+                className="input"
+                value={city}
+                onChange={(e) => {
+                  setCity(e.target.value);
+                  setAddressChanged(true);
+                }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Pays</label>
+            <input
+              type="text"
+              className="input"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+            />
+          </div>
+
+          <button
+            onClick={getLocation}
+            disabled={geoLoading}
+            className="btn btn-secondary w-full"
+          >
+            {geoLoading ? <span className="spinner"></span> : '📍 Géolocaliser cette adresse'}
+          </button>
+
+          <button
+            onClick={handleSaveAddress}
+            disabled={saving || !location.latitude || addressChanged}
+            className="btn btn-primary"
+          >
+            {saving ? <span className="spinner"></span> : 'Enregistrer l\'adresse'}
           </button>
         </div>
       </div>
@@ -220,6 +490,46 @@ export default function SettingsPage() {
             {passwordSaving ? <span className="spinner"></span> : 'Modifier le mot de passe'}
           </button>
         </form>
+      </div>
+
+      {/* Calendriers culturels */}
+      <div className="card mb-6">
+        <h2 className="text-xl font-semibold mb-4">Calendriers culturels</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Les calendriers activés seront pris en compte dans les recommandations de production.
+        </p>
+
+        <div className="space-y-3">
+          {[
+            { name: 'catholic', label: 'Calendrier catholique', description: 'Noël, Pâques, Toussaint...' },
+            { name: 'muslim', label: 'Calendrier musulman', description: 'Ramadan, Aïd...' },
+            { name: 'commercial', label: 'Événements commerciaux', description: 'Saint-Valentin, Fête des mères...' },
+          ].map((cal) => {
+            const calendar = calendars.find(c => c.calendar_name === cal.name);
+            const isActive = calendar?.is_active ?? true;
+
+            return (
+              <div key={cal.name} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">{cal.label}</p>
+                  <p className="text-sm text-gray-500">{cal.description}</p>
+                </div>
+                <button
+                  onClick={() => toggleCalendar(cal.name)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    isActive ? 'bg-green-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isActive ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Suppression */}
