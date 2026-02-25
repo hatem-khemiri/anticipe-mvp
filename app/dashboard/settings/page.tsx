@@ -1,12 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { DeleteAccountButton } from '../delete-account-button';
 
 export default function SettingsPage() {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [shopName, setShopName] = useState('');
+  
+  // Mot de passe
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -30,7 +38,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSaveName = async () => {
     setError('');
     setSuccess('');
     setSaving(true);
@@ -54,6 +62,47 @@ export default function SettingsPage() {
       setError('Erreur lors de la mise à jour');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSavePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (newPassword !== confirmPassword) {
+      setError('Les nouveaux mots de passe ne correspondent pas');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Le nouveau mot de passe doit contenir au moins 6 caractères');
+      return;
+    }
+
+    setPasswordSaving(true);
+
+    try {
+      const response = await fetch('/api/user/update', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('✅ Mot de passe modifié avec succès');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setError(data.error);
+      }
+    } catch (error) {
+      setError('Erreur lors de la modification');
+    } finally {
+      setPasswordSaving(false);
     }
   };
 
@@ -81,6 +130,7 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* Informations du commerce */}
       <div className="card mb-6">
         <h2 className="text-xl font-semibold mb-4">Informations du commerce</h2>
         
@@ -109,11 +159,11 @@ export default function SettingsPage() {
           <div>
             <label className="label">Adresse</label>
             <p className="text-gray-900">{userData?.address}</p>
-            <p className="text-xs text-gray-500 mt-1">Modification de l'adresse à venir</p>
+            <p className="text-xs text-gray-500 mt-1">La modification de l'adresse sera disponible prochainement</p>
           </div>
 
           <button
-            onClick={handleSave}
+            onClick={handleSaveName}
             disabled={saving}
             className="btn btn-primary"
           >
@@ -122,10 +172,58 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Mot de passe */}
       <div className="card mb-6">
-        <h2 className="text-xl font-semibold mb-4">Autres paramètres</h2>
-        <p className="text-gray-500 text-sm">Fonctionnalités à venir</p>
+        <h2 className="text-xl font-semibold mb-4">Modifier le mot de passe</h2>
+        
+        <form onSubmit={handleSavePassword} className="space-y-4">
+          <div>
+            <label className="label">Mot de passe actuel</label>
+            <input
+              type="password"
+              className="input"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">Nouveau mot de passe</label>
+            <input
+              type="password"
+              className="input"
+              minLength={6}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">Confirmer le nouveau mot de passe</label>
+            <input
+              type="password"
+              className="input"
+              minLength={6}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={passwordSaving}
+            className="btn btn-primary"
+          >
+            {passwordSaving ? <span className="spinner"></span> : 'Modifier le mot de passe'}
+          </button>
+        </form>
       </div>
+
+      {/* Suppression */}
+      <DeleteAccountButton />
     </div>
   );
 }
