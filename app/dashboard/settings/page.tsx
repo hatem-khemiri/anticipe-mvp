@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [shopName, setShopName] = useState('');
   
   // Adresse
@@ -76,39 +77,63 @@ export default function SettingsPage() {
 
   const fetchCalendars = async () => {
     try {
+      const defaultCalendars = [
+        { calendar_name: 'catholic', is_active: true },
+        { calendar_name: 'muslim', is_active: true },
+        { calendar_name: 'jewish', is_active: true },
+        { calendar_name: 'hindu', is_active: false },
+        { calendar_name: 'chinese', is_active: false },
+        { calendar_name: 'commercial', is_active: true },
+      ];
+
       const response = await fetch('/api/user/calendars');
       const data = await response.json();
       
       if (response.ok) {
-        const defaultCalendars = [
-          { calendar_name: 'catholic', is_active: true },
-          { calendar_name: 'muslim', is_active: true },
-          { calendar_name: 'jewish', is_active: true },
-          { calendar_name: 'hindu', is_active: false },
-          { calendar_name: 'chinese', is_active: false },
-          { calendar_name: 'commercial', is_active: true },
-        ];
-
         if (data.calendars.length === 0) {
+          // Aucun calendrier en DB, initialiser
           setCalendars(defaultCalendars);
-          // Initialiser dans la DB
-          for (const cal of defaultCalendars) {
-            await fetch('/api/user/calendars', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                calendarName: cal.calendar_name,
-                isActive: cal.is_active,
-              }),
-            });
-          }
+          
+          // Enregistrer dans la DB (en parallèle pour être plus rapide)
+          await Promise.all(
+            defaultCalendars.map(cal =>
+              fetch('/api/user/calendars', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  calendarName: cal.calendar_name,
+                  isActive: cal.is_active,
+                }),
+              })
+            )
+          );
         } else {
-          // Fusionner avec les valeurs par défaut pour les calendriers manquants
+          // Fusionner les calendriers DB avec les defaults
           const mergedCalendars = defaultCalendars.map(defaultCal => {
             const existingCal = data.calendars.find((c: Calendar) => c.calendar_name === defaultCal.calendar_name);
             return existingCal || defaultCal;
           });
           setCalendars(mergedCalendars);
+          
+          // Si des calendriers manquent en DB, les ajouter
+          const missingCalendars = defaultCalendars.filter(
+            defaultCal => !data.calendars.find((c: Calendar) => c.calendar_name === defaultCal.calendar_name)
+          );
+          
+          if (missingCalendars.length > 0) {
+            await Promise.all(
+              missingCalendars.map(cal =>
+                fetch('/api/user/calendars', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    calendarName: cal.calendar_name,
+                    isActive: cal.is_active,
+                  }),
+                })
+              )
+            );
+          }
         }
       }
     } catch (error) {
@@ -285,6 +310,36 @@ export default function SettingsPage() {
       setError('Erreur lors de la modification');
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const handleSyncCalendars = async () => {
+    setSyncing(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/api/calendars/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          year: new Date().getFullYear(),
+          country: 'FR'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess(`✅ ${data.inserted} événements ajoutés, ${data.updated} mis à jour pour ${data.year}`);
+        fetchCalendars();
+      } else {
+        setError(data.error);
+      }
+    } catch (error) {
+      setError('Erreur lors de la synchronisation');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -511,6 +566,21 @@ export default function SettingsPage() {
             {passwordSaving ? <span className="spinner"></span> : 'Modifier le mot de passe'}
           </button>
         </form>
+      </div>
+
+      {/* Synchronisation */}
+      <div className="card mb-6">
+        <h2 className="text-xl font-semibold mb-4">Synchronisation des calendriers</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Synchroniser les événements religieux et commerciaux depuis l'API Calendarific pour l'année en cours.
+        </p>
+        <button
+          onClick={handleSyncCalendars}
+          disabled={syncing}
+          className="btn btn-primary"
+        >
+          {syncing ? <span className="spinner"></span> : `🔄 Synchroniser les calendriers ${new Date().getFullYear()}`}
+        </button>
       </div>
 
       {/* Calendriers culturels */}
